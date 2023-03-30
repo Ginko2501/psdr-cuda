@@ -163,7 +163,12 @@ Spectrum<ad> DirectIntegrator::__Li(const Scene &scene, Sampler &sampler, const 
 }
 
 
-void DirectIntegrator::preprocess_secondary_edges(const Scene &scene, int sensor_id, const ScalarVector4i &reso, int nrounds) {
+void DirectIntegrator::preprocess_secondary_edges(
+    const Scene &scene, 
+    int sensor_id, 
+    const ScalarVector4i &reso, 
+    int nrounds
+) {
     PSDR_ASSERT(nrounds > 0);
     PSDR_ASSERT_MSG(scene.is_ready(), "Scene needs to be configured!");
 
@@ -188,8 +193,11 @@ void DirectIntegrator::preprocess_secondary_edges(const Scene &scene, int sensor
     FloatC result = zero<FloatC>(num_cells);
     for ( int j = 0; j < nrounds; ++j ) {
         SpectrumC value0;
-        std::tie(std::ignore, value0) = eval_secondary_edge<false>(scene, *scene.m_sensors[sensor_id],
-                                                                   (sample_base + sampler.next_nd<3, false>())*warpper->m_unit);
+        std::tie(std::ignore, value0) = eval_secondary_edge<false>(
+            scene, 
+            *scene.m_sensors[sensor_id],
+            (sample_base + sampler.next_nd<3, false>()) * warpper->m_unit
+        );
         masked(value0, ~enoki::isfinite<SpectrumC>(value0)) = 0.f;
         if ( likely(reso[3] > 1) ) {
             value0 /= static_cast<float>(reso[3]);
@@ -204,14 +212,23 @@ void DirectIntegrator::preprocess_secondary_edges(const Scene &scene, int sensor
 }
 
 
-void DirectIntegrator::render_secondary_edges(const Scene &scene, int sensor_id, SpectrumD &result) const {
+void DirectIntegrator::render_secondary_edges(
+    const Scene &scene, 
+    int sensor_id, 
+    SpectrumD &result
+) const {
     const RenderOption &opts = scene.m_opts;
 
     Vector3fC sample3 = scene.m_samplers[2].next_nd<3, false>();
     FloatC pdf0 = (m_warpper.empty() || m_warpper[sensor_id] == nullptr) ?
-                  1.f : m_warpper[sensor_id]->sample_reuse(sample3);
+        1.f : m_warpper[sensor_id]->sample_reuse(sample3);
 
-    auto [idx, value] = eval_secondary_edge<true>(scene, *scene.m_sensors[sensor_id], sample3);
+    auto [idx, value] = eval_secondary_edge<true>(
+        scene, 
+        *scene.m_sensors[sensor_id], 
+        sample3
+    );
+
     masked(value, ~enoki::isfinite<SpectrumD>(value)) = 0.f;
     masked(value, pdf0 > Epsilon) /= pdf0;
     if ( likely(opts.sppse > 1) ) {
