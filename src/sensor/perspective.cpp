@@ -5,8 +5,7 @@
 #include <psdr/scene/scene.h>
 #include <psdr/sensor/perspective.h>
 
-namespace psdr
-{
+namespace psdr {
 
 void PerspectiveCamera::configure() {
     Sensor::configure();
@@ -117,8 +116,12 @@ std::string PerspectiveCamera::to_string() const {
 }
 
 
-RayC PerspectiveCamera::sample_primary_ray(const Vector2fC &samples) const {
-    Vector3fC d = normalize(transform_pos<FloatC>(detach(m_sample_to_camera), concat(samples, 0.f)));
+RayC PerspectiveCamera::sample_primary_ray(
+    const Vector2fC &samples
+) const {
+    Vector3fC d = normalize(transform_pos<FloatC>(detach(m_sample_to_camera), 
+                            concat(samples, 0.f)));
+
     Matrix4fC to_world = detach(m_to_world);
     return RayC(
         transform_pos<FloatC>(to_world, zero<Vector3fC>(slices(samples))),
@@ -127,8 +130,11 @@ RayC PerspectiveCamera::sample_primary_ray(const Vector2fC &samples) const {
 }
 
 
-RayD PerspectiveCamera::sample_primary_ray(const Vector2fD &samples) const {
-    Vector3fD d = normalize(transform_pos<FloatD>(m_sample_to_camera, concat(samples, 0.f)));
+RayD PerspectiveCamera::sample_primary_ray(
+    const Vector2fD &samples
+) const {
+    Vector3fD d = normalize(transform_pos<FloatD>(m_sample_to_camera, 
+                            concat(samples, 0.f)));
     return RayD(
         transform_pos<FloatD>(m_to_world, zero<Vector3fD>(slices(samples))),
         transform_dir<FloatD>(m_to_world, d)
@@ -136,7 +142,9 @@ RayD PerspectiveCamera::sample_primary_ray(const Vector2fD &samples) const {
 }
 
 
-SensorDirectSampleC PerspectiveCamera::sample_direct(const Vector3fC &p) const {
+SensorDirectSampleC PerspectiveCamera::sample_direct(
+    const Vector3fC &p
+) const {
     SensorDirectSampleC result;
     result.q = head<2>(transform_pos<FloatC>(detach(m_world_to_sample), p));
 
@@ -155,27 +163,35 @@ SensorDirectSampleC PerspectiveCamera::sample_direct(const Vector3fC &p) const {
 }
 
 
-PrimaryEdgeSample PerspectiveCamera::sample_primary_edge(const FloatC &_sample1) const {
+PrimaryEdgeSample PerspectiveCamera::sample_primary_edge(
+    const FloatC &_sample1
+) const {
     FloatC sample1 = _sample1;
 
     PrimaryEdgeSample result;
     const int m = static_cast<int>(slices(sample1));
 
     IntC edge_idx;
-    std::tie(edge_idx, result.pdf) = m_edge_distrb.sample_reuse<false>(sample1);
+    std::tie(edge_idx, result.pdf) = 
+        m_edge_distrb.sample_reuse<false>(sample1);
 
-    PrimaryEdgeInfo edge_info = gather<PrimaryEdgeInfo>(m_edge_info, IntD(edge_idx));
+    PrimaryEdgeInfo edge_info = 
+        gather<PrimaryEdgeInfo>(m_edge_info, IntD(edge_idx));
     result.pdf /= detach(edge_info.edge_length);
 
     Vector2fC edge_normal = detach(edge_info.edge_normal);
-#ifdef PSDR_PRIMARY_EDGE_VIS_CHECK
-    const Vector3fD &p0 = edge_info.p0, &p1 = edge_info.p1;
-    Vector3fD p_3   = fmadd(p0, 1.0f - sample1, p1*sample1);
-    Vector2fD p_    = Vector2fD(p_3.x(), p_3.y());
-#else
-    const Vector2fD &p0 = edge_info.p0, &p1 = edge_info.p1;
-    Vector2fD p_    = fmadd(p0, 1.0f - sample1, p1*sample1);
-#endif
+    #ifdef PSDR_PRIMARY_EDGE_VIS_CHECK
+        const Vector3fD &p0 = edge_info.p0, &p1 = edge_info.p1;
+        Vector3fD p_3   = fmadd(p0, 1.0f - sample1, p1*sample1);
+
+        
+        Vector2fD p_    = Vector2fD(p_3.x(), p_3.y());
+    #else
+        const Vector2fD &p0 = edge_info.p0, 
+                        &p1 = edge_info.p1;
+        Vector2fD p_ = fmadd(p0, 1.0f - sample1, p1 * sample1);
+    #endif
+
     Vector2fC p     = detach(p_);
     result.x_dot_n  = dot(p_, edge_normal);
 
@@ -189,12 +205,12 @@ PrimaryEdgeSample PerspectiveCamera::sample_primary_edge(const FloatC &_sample1)
     result.ray_p    = sample_primary_ray(p + EdgeEpsilon*edge_normal);
     result.ray_n    = sample_primary_ray(p - EdgeEpsilon*edge_normal);
 
-#ifdef PSDR_PRIMARY_EDGE_VIS_CHECK
-    RayC &ray_c     = result.ray_c;
-    ray_c           = sample_primary_ray(p);
-    Vector3fD q     = transform_pos(m_sample_to_world, p_3);
-    ray_c.tmax      = norm(detach(q) - detach(m_camera_pos)) - 100.f*ShadowEpsilon;    // Being conservative here to avoid numerical issues
-#endif
+    #ifdef PSDR_PRIMARY_EDGE_VIS_CHECK
+        RayC &ray_c     = result.ray_c;
+        ray_c           = sample_primary_ray(p);
+        Vector3fD q     = transform_pos(m_sample_to_world, p_3);
+        ray_c.tmax      = norm(detach(q) - detach(m_camera_pos)) - 100.f*ShadowEpsilon;    // Being conservative here to avoid numerical issues
+    #endif
 
     return result;
 }
